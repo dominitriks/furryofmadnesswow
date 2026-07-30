@@ -1,0 +1,9 @@
+﻿{
+  "name": "fom-cloud-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pushes server status to Supabase and drains the registration queue",
+  "main": "agent.js",
+  "scripts": { "start": "node agent.js" },
+  "dependencies": { "mysql2": "^3.11.0" }
+}

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Furry of Madness — WoW 3.3.5a</title>
+<meta name="description" content="Частен сървър за World of Warcraft: Wrath of the Lich King (3.3.5a) с AI играчи.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🐾</text></svg>">
+<style>
+:root{
+  --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --border:rgba(255,255,255,.10); --rule:#2c2c2a;
+  --good:#0ca30c; --warn:#fab219; --crit:#d03b3b; --accent:#3987e5;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+     font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+header{padding:56px 0 34px;text-align:center}
+h1{font-size:clamp(30px,6vw,46px);margin:0 0 8px;letter-spacing:-.5px}
+.tag{color:var(--ink2);font-size:17px;margin:0}
+.pill{display:inline-flex;align-items:center;gap:9px;margin-top:20px;padding:8px 16px;
+      border-radius:999px;font-weight:700;font-size:14px;border:1px solid var(--border)}
+.dot{width:9px;height:9px;border-radius:50%;background:currentColor}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:44px 0 14px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+.n{font-size:34px;font-weight:700;line-height:1.1}
+.l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.7px;margin-top:4px}
+code,.mono{font-family:ui-monospace,Consolas,monospace}
+.connect{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px}
+.connect ol{margin:0;padding-left:22px}
+.connect li{margin:10px 0;color:var(--ink2)}
+.copy{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.copy code{background:var(--plane);border:1px solid var(--border);border-radius:8px;
+           padding:9px 13px;font-size:14px;color:var(--accent);word-break:break-all}
+button{padding:10px 18px;border-radius:9px;border:1px solid transparent;background:var(--accent);
+       color:#04121f;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+button:hover{filter:brightness(1.1)} button:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{background:transparent;border-color:var(--border);color:var(--ink)}
+form{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px;
+     max-width:440px}
+label{display:block;font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;
+      letter-spacing:.6px;margin:14px 0 5px}
+input{width:100%;padding:11px 13px;border-radius:9px;border:1px solid var(--border);
+      background:var(--plane);color:var(--ink);font:inherit;font-size:15px}
+input:focus{outline:2px solid color-mix(in srgb,var(--accent) 55%,transparent);border-color:var(--accent)}
+.hint{color:var(--muted);font-size:12.5px;margin-top:7px}
+.msg{margin-top:14px;padding:11px 14px;border-radius:9px;font-size:14px;border:1px solid var(--border);white-space:pre-wrap}
+.msg.ok{border-color:var(--good);color:var(--good)} .msg.bad{border-color:var(--crit);color:var(--crit)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.7px;
+   font-weight:700;padding:9px 12px;border-bottom:1px solid var(--rule)}
+td{padding:9px 12px;border-bottom:1px solid var(--rule)}
+tr:last-child td{border-bottom:0}
+.rank{color:var(--muted);font-variant-numeric:tabular-nums;width:38px}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:14px}
+footer{margin:60px 0 40px;text-align:center;color:var(--muted);font-size:13px}
+.stale{color:var(--warn);font-size:12.5px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Furry of Madness</h1>
+    <p class="tag">World of Warcraft — Wrath of the Lich King · пач 3.3.5a</p>
+    <div id="statusPill" class="pill" style="color:var(--muted)"><i class="dot"></i>проверявам…</div>
+    <div id="stale" class="stale"></div>
+  </header>
+
+  <h2>Сървърът в момента</h2>
+  <div class="grid">
+    <div class="card"><div class="n" id="sPlayers">—</div><div class="l">играчи онлайн</div></div>
+    <div class="card"><div class="n" id="sBots">—</div><div class="l">AI играчи</div></div>
+    <div class="card"><div class="n" id="sChars">—</div><div class="l">характери</div></div>
+    <div class="card"><div class="n" id="sUptime">—</div><div class="l">без прекъсване</div></div>
+  </div>
+
+  <h2>Как да влезеш</h2>
+  <div class="connect">
+    <ol>
+      <li>Нужен ти е клиент <strong>3.3.5a (build 12340)</strong> — други версии не се свързват.</li>
+      <li>Отвори <code class="mono">&lt;папка на играта&gt;\WTF\Config.wtf</code> и сложи реда отдолу.</li>
+      <li>Създай си акаунт от формата и влез с него.</li>
+    </ol>
+    <div class="copy">
+      <code id="realmline">set realmlist …</code>
+      <button class="ghost" onclick="copyRealm()">Копирай</button>
+    </div>
+  </div>
+
+  <h2>Регистрация</h2>
+  <form id="regForm" onsubmit="register(event)">
+    <label for="u">Потребителско име</label>
+    <input id="u" maxlength="16" autocomplete="username" placeholder="до 16 знака" required>
+    <label for="p">Парола</label>
+    <input id="p" type="password" maxlength="16" autocomplete="new-password" placeholder="до 16 знака" required>
+    <div class="hint">Само A–Z, a–z, 0–9, _ и – за името. Паролата е до 16 знака без интервал.
+      Името и паролата не различават малки и главни букви.</div>
+    <div style="margin-top:16px"><button id="regBtn" type="submit">Създай акаунт</button></div>
+    <div id="regMsg"></div>
+  </form>
+  <p class="hint" style="max-width:440px">Акаунтът се създава от сървъра до около минута след заявката.
+    Ако той е офлайн, заявката изчаква и се изпълнява при следващото пускане.</p>
+
+  <h2>Класация</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th class="rank">#</th><th>Име</th><th>Ниво</th><th>Клас</th><th>Изиграно</th></tr></thead>
+      <tbody id="lb"><tr><td colspan="5" style="color:var(--muted)">зареждане…</td></tr></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Частен сървър на <a href="https://www.azerothcore.org" style="color:var(--accent)">AzerothCore</a>.
+    Не е свързан с Blizzard Entertainment.
+  </footer>
+
+</div>
+
+<script src="config.js"></script>
+<script>
+const CLASSES={1:'Warrior',2:'Paladin',3:'Hunter',4:'Rogue',5:'Priest',6:'Death Knight',7:'Shaman',8:'Mage',9:'Warlock',11:'Druid'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dur=s=>{s=+s||0;const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+  return d?d+'д '+h+'ч':(h?h+'ч '+m+'м':m+'м');};
+
+async function sb(path, opts={}){
+  const r=await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${path}`,{
+    ...opts,
+    headers:{apikey:CONFIG.SUPABASE_ANON_KEY,Authorization:`Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+             'Content-Type':'application/json',...(opts.headers||{})}});
+  const t=await r.text();
+  if(!r.ok) throw new Error(t||('HTTP '+r.status));
+  return t?JSON.parse(t):null;
+}
+
+async function loadStatus(){
+  try{
+    const rows=await sb('server_status?id=eq.1&select=*');
+    const s=rows&&rows[0]; if(!s) return;
+    const age=(Date.now()-new Date(s.updated_at).getTime())/1000;
+    const fresh=age<150;                       // agent pushes every 30s
+    const up=s.online&&fresh;
+
+    const pill=document.getElementById('statusPill');
+    pill.style.color=up?'var(--good)':'var(--crit)';
+    pill.innerHTML='<i class="dot"></i>'+(up?'Сървърът работи':'Сървърът е офлайн');
+    // Never present a stale snapshot as live truth.
+    document.getElementById('stale').textContent =
+      fresh?'':'последни данни отпреди '+dur(age)+' — възможно е да са остарели';
+
+    document.getElementById('sPlayers').textContent=s.players_online??'—';
+    document.getElementById('sBots').textContent=s.bots_online??'—';
+    document.getElementById('sChars').textContent=s.characters_total??'—';
+    document.getElementById('sUptime').textContent=s.uptime_sec?dur(s.uptime_sec):'—';
+    if(s.realm_address) document.getElementById('realmline').textContent='set realmlist '+s.realm_address;
+  }catch(e){
+    document.getElementById('statusPill').innerHTML='<i class="dot"></i>няма връзка';
+  }
+}
+
+async function loadLeaderboard(){
+  const tb=document.getElementById('lb');
+  try{
+    const rows=await sb('leaderboard?is_bot=eq.false&select=name,level,class,played_sec&order=level.desc,played_sec.desc&limit=25');
+    if(!rows||!rows.length){tb.innerHTML='<tr><td colspan="5" style="color:var(--muted)">още няма характери</td></tr>';return;}
+    tb.innerHTML=rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td><strong>${esc(r.name)}</strong></td>`
+      +`<td>${esc(r.level)}</td><td>${esc(CLASSES[r.class]||r.class)}</td><td>${dur(r.played_sec)}</td></tr>`).join('');
+  }catch(e){ tb.innerHTML='<tr><td colspan="5" style="color:var(--crit)">не мога да заредя класацията</td></tr>'; }
+}
+
+function copyRealm(){
+  const t=document.getElementById('realmline').textContent;
+  navigator.clipboard.writeText(t).then(()=>{
+    const b=event.target; const o=b.textContent; b.textContent='Копирано ✓';
+    setTimeout(()=>b.textContent=o,1600);
+  });
+}
+
+async function register(ev){
+  ev.preventDefault();
+  const u=document.getElementById('u').value.trim();
+  const p=document.getElementById('p').value;
+  const msg=document.getElementById('regMsg'), btn=document.getElementById('regBtn');
+  const show=(ok,t)=>{msg.className='msg '+(ok?'ok':'bad');msg.textContent=t;};
+
+  if(!/^[A-Za-z0-9_-]{1,16}$/.test(u)) return show(false,'Името може да съдържа само A-Z, a-z, 0-9, _ и –, до 16 знака.');
+  if(!/^[\x21-\x7E]{1,16}$/.test(p))   return show(false,'Паролата трябва да е до 16 печатаеми знака без интервал.');
+
+  btn.disabled=true; show(true,'Изпращам…');
+  try{
+    const free=await sb('rpc/username_available',{method:'POST',body:JSON.stringify({candidate:u})});
+    if(free===false){ show(false,'Това име вече е заето или чака обработка.'); btn.disabled=false; return; }
+
+    await sb('registrations',{method:'POST',body:JSON.stringify({username:u,password:p}),
+                              headers:{Prefer:'return=minimal'}});
+    show(true,'Готово! Акаунтът ще бъде създаден до около минута.\nСлед това влез в играта с тези данни.');
+    document.getElementById('regForm').reset();
+  }catch(e){
+    const t=String(e.message||e);
+    show(false, /duplicate|unique/i.test(t) ? 'Това име вече е заето.' : 'Възникна грешка. Опитай пак след малко.');
+  }finally{ btn.disabled=false; }
+}
+
+loadStatus(); loadLeaderboard();
+setInterval(loadStatus,30000);
+setInterval(loadLeaderboard,120000);
+</script>
+</body>
+</html>
