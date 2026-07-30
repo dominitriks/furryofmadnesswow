@@ -1,5 +1,7 @@
 # Phase 2.5 - runs ELEVATED. Logs everything so the outcome is verifiable afterwards.
-$log = 'C:\Users\DomiJesusa\Desktop\wow\setup\02-elevated-fixes.log'
+$BASE = Split-Path $PSScriptRoot -Parent   # wow\ - derived, so this script survives a machine move
+
+$log = "$BASE\setup\02-elevated-fixes.log"
 function W($m) { $line = "[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $m; Add-Content -Path $log -Value $line -Encoding utf8 }
 
 Set-Content -Path $log -Value "=== Phase 2.5 elevated fixes ===" -Encoding utf8
@@ -8,7 +10,7 @@ W ("Elevated: " + ([Security.Principal.WindowsPrincipal][Security.Principal.Wind
 # --- A. Defender exclusions -------------------------------------------------
 # Fixes the file locking that forced -p:TrackFileAccess=false, which made every
 # build a full rebuild. With these in place incremental builds work again.
-foreach ($p in @('C:\Users\DomiJesusa\Desktop\wow\build','C:\Users\DomiJesusa\Desktop\wow\source')) {
+foreach ($p in @("$BASE\build","$BASE\source")) {
     try { Add-MpPreference -ExclusionPath $p -ErrorAction Stop; W "exclusion added: $p" }
     catch { W "exclusion FAILED for ${p}: $($_.Exception.Message)" }
 }
@@ -16,7 +18,7 @@ try { W ("exclusions now: " + ((Get-MpPreference).ExclusionPath -join ' | ')) } 
 
 # --- B. MySQL as a Windows service -----------------------------------------
 $mysqld = 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe'
-$ini    = 'C:\Users\DomiJesusa\Desktop\wow\mysql\my.ini'
+$ini    = "$BASE\mysql\my.ini"
 
 # The user-level instance holds port 3306; the service cannot bind until it exits.
 $running = Get-Process mysqld -ErrorAction SilentlyContinue

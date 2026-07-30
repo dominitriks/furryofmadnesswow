@@ -17,7 +17,24 @@ using System.Windows.Forms;
 static class HudLauncher
 {
     const int    PORT      = 8080;
-    const string PANEL_DIR = @"C:\Users\DomiJesusa\Desktop\wow\panel";
+    static readonly string PANEL_DIR = LocatePanel();
+
+    // Found at runtime rather than baked in, so moving the project to another
+    // machine or drive needs no recompile.
+    static string LocatePanel()
+    {
+        string d = AppDomain.CurrentDomain.BaseDirectory;
+        for (int i = 0; i < 6 && !string.IsNullOrEmpty(d); i++)
+        {
+            if (File.Exists(Path.Combine(Path.Combine(d, "panel"), "server.js")))
+                return Path.Combine(d, "panel");
+            if (File.Exists(Path.Combine(d, "server.js")))
+                return d;
+            DirectoryInfo p = Directory.GetParent(d.TrimEnd(Path.DirectorySeparatorChar));
+            d = (p == null) ? null : p.FullName;
+        }
+        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "panel");
+    }
     const string URL       = "http://localhost:8080/hud";
 
     static bool PortOpen()

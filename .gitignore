@@ -75,3 +75,13 @@ cloud/agent/.env
 
 cloud/agent/agent.log
 cloud/agent/agent.err
+
+# Database dumps from setup/backup-databases.ps1.
+# These carry every account's SRP6 salt and verifier - never publish them.
+db-backup-*/
+*.sql.gz
+
+# Decrypted migration dumps. Only the .enc versions may be committed - this
+# repo is PUBLIC and acore_auth holds password-equivalent SRP6 verifiers.
+setup/migration/*.sql
+setup/migration/*.sql.gz

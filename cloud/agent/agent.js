@@ -31,8 +31,10 @@ loadEnv();
 
 const SUPABASE_URL  = process.env.SUPABASE_URL;
 const SERVICE_KEY   = process.env.SUPABASE_SERVICE_KEY;
-const SERVER_DIR    = process.env.SERVER_DIR    || 'C:\\Users\\DomiJesusa\\Desktop\\wow\\server';
-const DB_PASS_FILE  = process.env.DB_PASS_FILE  || 'C:\\Users\\DomiJesusa\\Desktop\\wow\\setup\\db-password.txt';
+// cloud\agent\agent.js -> wow\ ; keeps working after a move to another machine.
+const WOW_BASE      = process.env.WOW_BASE      || path.resolve(__dirname, '..', '..');
+const SERVER_DIR    = process.env.SERVER_DIR    || path.join(WOW_BASE, 'server');
+const DB_PASS_FILE  = process.env.DB_PASS_FILE  || path.join(WOW_BASE, 'setup', 'db-password.txt');
 const DB_USER       = process.env.DB_USER       || 'acore';
 const DB_HOST       = process.env.DB_HOST       || '127.0.0.1';
 const PUSH_INTERVAL = +(process.env.PUSH_INTERVAL_MS || 30000);

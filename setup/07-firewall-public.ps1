@@ -4,8 +4,10 @@
 # This is the step that actually exposes the server to the internet. Still
 # scoped to the two specific executables and the two specific ports - it does
 # NOT open the machine generally. MySQL/3306 is untouched and stays on 127.0.0.1.
-$log = 'C:\Users\DomiJesusa\Desktop\wow\setup\07-firewall-public.log'
-$srv = 'C:\Users\DomiJesusa\Desktop\wow\server'
+$BASE = Split-Path $PSScriptRoot -Parent   # wow\ - derived, so this script survives a machine move
+
+$log = "$BASE\setup\07-firewall-public.log"
+$srv = "$BASE\server"
 function W($m) { Add-Content -Path $log -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $m) -Encoding utf8 }
 Set-Content -Path $log -Value "=== widen firewall to Any ===" -Encoding utf8
 

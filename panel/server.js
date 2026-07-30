@@ -17,7 +17,10 @@ const { execFile, spawn } = require('child_process');
 const mysql = require('mysql2/promise');
 
 const PORT = 8080;
-const BASE = 'C:\\Users\\DomiJesusa\\Desktop\\wow';
+// Derived from this file's own location (panel\server.js -> wow\), so the panel
+// follows the project to a new machine or drive with no edit. WOW_BASE
+// overrides it if the panel is ever run from somewhere else.
+const BASE = process.env.WOW_BASE || path.resolve(__dirname, '..');
 const CMD_FILE = path.join(BASE, 'server', 'cmd.txt');
 const CONSOLE_LOG = path.join(BASE, 'server', 'logs', 'worldserver-console.log');
 const DB_PASS = fs.readFileSync(path.join(BASE, 'setup', 'db-password.txt'), 'utf8').trim();

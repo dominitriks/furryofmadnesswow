@@ -85,7 +85,25 @@ class Hud : Form
 {
     const int PORT = 8080;
     const string BASE_URL  = "http://localhost:8080";
-    const string PANEL_DIR = @"C:\Users\DomiJesusa\Desktop\wow\panel";
+    static readonly string PANEL_DIR = LocatePanel();
+
+    // Found at runtime rather than baked in, so moving the project to another
+    // machine or drive needs no recompile. Walks up from the exe looking for
+    // panel\server.js; also accepts being run from inside panel\ itself.
+    static string LocatePanel()
+    {
+        string d = AppDomain.CurrentDomain.BaseDirectory;
+        for (int i = 0; i < 6 && !string.IsNullOrEmpty(d); i++)
+        {
+            if (File.Exists(Path.Combine(Path.Combine(d, "panel"), "server.js")))
+                return Path.Combine(d, "panel");
+            if (File.Exists(Path.Combine(d, "server.js")))
+                return d;
+            DirectoryInfo p = Directory.GetParent(d.TrimEnd(Path.DirectorySeparatorChar));
+            d = (p == null) ? null : p.FullName;
+        }
+        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "panel");
+    }
 
     readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
     readonly JavaScriptSerializer json = new JavaScriptSerializer();

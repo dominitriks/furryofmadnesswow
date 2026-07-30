@@ -2,7 +2,9 @@
 #
 # authserver has no CliRunnable, so unlike worldserver it has no stdin-EOF
 # shutdown hazard and can be launched with plain output redirection.
-$srv    = 'C:\Users\DomiJesusa\Desktop\wow\server'
+$BASE = Split-Path $PSScriptRoot -Parent   # wow\ - derived, so this script survives a machine move
+
+$srv    = "$BASE\server"
 $outLog = "$srv\logs\authserver-console.log"
 
 $p = Start-Process -FilePath "$srv\authserver.exe" `

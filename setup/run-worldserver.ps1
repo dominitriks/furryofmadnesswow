@@ -9,7 +9,9 @@
 # So: keep StandardInput OPEN for the process lifetime and never close it.
 # Commands are picked up from cmd.txt so the console stays drivable.
 
-$srv     = 'C:\Users\DomiJesusa\Desktop\wow\server'
+$BASE = Split-Path $PSScriptRoot -Parent   # wow\ - derived, so this script survives a machine move
+
+$srv     = "$BASE\server"
 $outLog  = "$srv\logs\worldserver-console.log"
 $cmdFile = "$srv\cmd.txt"
 

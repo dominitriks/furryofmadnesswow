@@ -6,8 +6,10 @@
 #   - RemoteAddress = LocalSubnet, so this does NOT expose anything to the
 #     internet even though the Wi-Fi is classified "Public"
 #   - no router port-forwarding is touched; this is LAN-only
-$log = 'C:\Users\DomiJesusa\Desktop\wow\setup\06-firewall-lan.log'
-$srv = 'C:\Users\DomiJesusa\Desktop\wow\server'
+$BASE = Split-Path $PSScriptRoot -Parent   # wow\ - derived, so this script survives a machine move
+
+$log = "$BASE\setup\06-firewall-lan.log"
+$srv = "$BASE\server"
 function W($m) { Add-Content -Path $log -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $m) -Encoding utf8 }
 
 Set-Content -Path $log -Value "=== LAN firewall rules ===" -Encoding utf8

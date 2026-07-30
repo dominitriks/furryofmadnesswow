@@ -4,7 +4,7 @@
 # MySQL is a Windows service (MySQL84) and starts automatically on boot.
 # The two game servers do NOT - this script brings them up.
 
-$base = 'C:\Users\DomiJesusa\Desktop\wow'
+$base = $PSScriptRoot   # this script lives in wow\ - no absolute path needed
 
 Write-Host "=== AzerothCore launcher ===" -ForegroundColor Cyan
 

@@ -1,9 +1,11 @@
 # Phase 6 - the no-client verification battery.
 # Everything here is provable WITHOUT a WoW client. Read-only: it never writes
 # to the databases or the server tree.
-$srv   = 'C:\Users\DomiJesusa\Desktop\wow\server'
+$BASE = Split-Path $PSScriptRoot -Parent   # wow\ - derived, so this script survives a machine move
+
+$srv   = "$BASE\server"
 $mysql = 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe'
-$log   = 'C:\Users\DomiJesusa\Desktop\wow\setup\05-verify.log'
+$log   = "$BASE\setup\05-verify.log"
 function W($m) { $l = $m; Write-Output $l; Add-Content -Path $log -Value $l -Encoding utf8 }
 function Q($sql) { & $mysql -u acore -pacore --protocol=tcp -h 127.0.0.1 -N -B -e $sql 2>$null }
 

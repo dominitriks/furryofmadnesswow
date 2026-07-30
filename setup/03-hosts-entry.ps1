@@ -1,12 +1,14 @@
 # Phase 4.5 - runs ELEVATED. Points the production hostname at this machine.
-$log   = 'C:\Users\DomiJesusa\Desktop\wow\setup\03-hosts-entry.log'
+$BASE = Split-Path $PSScriptRoot -Parent   # wow\ - derived, so this script survives a machine move
+
+$log   = "$BASE\setup\03-hosts-entry.log"
 $hosts = "$env:SystemRoot\System32\drivers\etc\hosts"
 function W($m) { Add-Content -Path $log -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $m) -Encoding utf8 }
 
 Set-Content -Path $log -Value "=== Phase 4.5 hosts entry ===" -Encoding utf8
 
 # Back up before touching a system file.
-$backup = 'C:\Users\DomiJesusa\Desktop\wow\setup\hosts.backup'
+$backup = "$BASE\setup\hosts.backup"
 Copy-Item -Path $hosts -Destination $backup -Force
 W "backed up original hosts -> $backup"
 

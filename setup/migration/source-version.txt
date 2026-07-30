@@ -1,0 +1,27 @@
+Exact source revisions this server is built from.
+Generated 2026-07-30 23:05
+The core and the module are coupled - always check out BOTH at these commits.
+
+=== source/  (AzerothCore, Playerbot fork) ===
+branch: Playerbot
+HEAD:   ceeb3116ebedf4b35f12b75e5481b6ddd0de7a89
+date:   2026-07-24 18:11:03 -0700
+subject:Merge pull request #227 from mod-playerbots/test-staging
+remote:
+  origin	https://github.com/mod-playerbots/azerothcore-wotlk.git (fetch)
+  origin	https://github.com/mod-playerbots/azerothcore-wotlk.git (push)
+
+git status --short:
+  (clean - no local modifications)
+
+=== source/modules/mod-playerbots ===
+branch: master
+HEAD:   3fa1c1e49f8f1324b72461e576bce7c89b0a6521
+date:   2026-07-18 03:53:57 -0700
+subject:Merge pull request #2580 from mod-playerbots/test-staging
+remote:
+  origin	https://github.com/mod-playerbots/mod-playerbots.git (fetch)
+  origin	https://github.com/mod-playerbots/mod-playerbots.git (push)
+
+git status --short:
+   M src/Ai/Base/Actions/LfgActions.cpp
