@@ -347,6 +347,8 @@ cd C:\wow
 | акаунти / герои | **13 / 96** |
 | `server\logs\Playerbots.log` | ботове влизат |
 | админ панел | http://localhost:8080 |
+| HUD в браузър | http://localhost:8080/hud |
+| HUD като програма | `.\AzerothCore-HUD.exe` след `build-hud.ps1` |
 | отвън | **от телефон на мобилни данни** |
 
 > ⚠️ Тест отвътре в мрежата не доказва нищо — той минава по `localAddress` и
