@@ -1,0 +1,105 @@
+﻿diff --git a/src/Ai/Base/Actions/LfgActions.cpp b/src/Ai/Base/Actions/LfgActions.cpp
+index fd2fe10d..101524ee 100644
+--- a/src/Ai/Base/Actions/LfgActions.cpp
++++ b/src/Ai/Base/Actions/LfgActions.cpp
+@@ -17,6 +17,31 @@
+ 
+ using namespace lfg;
+ 
++namespace
++{
++    // PATCH (local): after a bot accepts an LFG proposal it is teleported into the
++    // dungeon immediately. Without a pause the bots charge in while a real player
++    // is still finishing a quest or a duel. Blocking the bot's AI for a few seconds
++    // makes them hold at the entrance instead.
++    //
++    // Tunable in playerbots.conf (milliseconds):
++    //     AiPlayerbot.LfgEnterDelayMin   default 25000
++    //     AiPlayerbot.LfgEnterDelayMax   default 50000
++    // Set both to 0 to restore the original charge-in-immediately behaviour.
++    void LfgDelayOnEnter(PlayerbotAI* botAI)
++    {
++        uint32 dmin = sConfigMgr->GetOption<uint32>("AiPlayerbot.LfgEnterDelayMin", 25000);
++        uint32 dmax = sConfigMgr->GetOption<uint32>("AiPlayerbot.LfgEnterDelayMax", 50000);
++
++        if (!dmax)
++            return;
++        if (dmin > dmax)
++            std::swap(dmin, dmax);
++
++        botAI->SetNextCheckDelay(urand(dmin, dmax));
++    }
++}
++
+ bool LfgJoinAction::Execute(Event /*event*/) { return JoinLFG(); }
+ 
+ uint32 LfgJoinAction::GetRoles()
+@@ -201,7 +226,12 @@ bool LfgAcceptAction::Execute(Event event)
+     // Try accept if already stored
+     if (id)
+     {
+-        if (bot->IsInCombat() || bot->isDead())
++        // PATCH (local): only a DEAD bot declines. Upstream also declined while
++        // in combat, but random bots grind constantly, so a tank was very often
++        // fighting when the proposal arrived - and LFG drops decliners from the
++        // queue, so groups kept failing to form. Real players may accept mid-fight
++        // too. Instead of declining, the bot drops what it is doing and commits.
++        if (bot->isDead())
+         {
+             WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
+             *packet << id << false;
+@@ -209,6 +239,10 @@ bool LfgAcceptAction::Execute(Event event)
+             return true;
+         }
+ 
++        bot->CombatStop(true);
++        bot->AttackStop();
++        bot->InterruptNonMeleeSpells(true);
++
+         botAI->GetAiObjectContext()->GetValue<uint32>("lfg proposal")->Set(0);
+         bot->ClearUnitState(UNIT_STATE_ALL_STATE);
+ 
+@@ -223,6 +257,11 @@ bool LfgAcceptAction::Execute(Event event)
+         }
+ 
+         botAI->Reset();
++
++        // PATCH (local): idle on entry so real players can finish a quest, a duel
++        // or whatever they were doing before the bots start pulling. Read straight
++        // from the config so the timing is tunable without recompiling.
++        LfgDelayOnEnter(botAI);
+         return true;
+     }
+ 
+@@ -236,7 +275,9 @@ bool LfgAcceptAction::Execute(Event event)
+ 
+         if (id)
+         {
+-            if (bot->IsInCombat() || bot->isDead())
++            // PATCH (local): same change as the branch above - decline only when
++            // dead, otherwise abandon the current fight and accept.
++            if (bot->isDead())
+             {
+                 WorldPacket* packet = new WorldPacket(CMSG_LFG_PROPOSAL_RESULT);
+                 *packet << id << false;
+@@ -244,6 +285,10 @@ bool LfgAcceptAction::Execute(Event event)
+                 return true;
+             }
+ 
++            bot->CombatStop(true);
++            bot->AttackStop();
++            bot->InterruptNonMeleeSpells(true);
++
+             botAI->GetAiObjectContext()->GetValue<uint32>("lfg proposal")->Set(0);
+             bot->ClearUnitState(UNIT_STATE_ALL_STATE);
+ 
+@@ -258,6 +303,9 @@ bool LfgAcceptAction::Execute(Event event)
+             }
+ 
+             botAI->Reset();
++
++            // PATCH (local): see the branch above.
++            LfgDelayOnEnter(botAI);
+             return true;
+         }
+     }

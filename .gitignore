@@ -1,0 +1,71 @@
+# NOTE: git does not support trailing comments on a pattern line.
+# Every comment here is on its own line on purpose.
+
+# ─────────────────────────────────────────────────────────────
+#  SECRETS — never commit. The game server is reachable from the
+#  internet, so a leaked password here is a live compromise.
+# ─────────────────────────────────────────────────────────────
+setup/CREDENTIALS.txt
+setup/db-password.txt
+setup/gm-password.txt
+setup/public-ip.txt
+setup/hosts.backup
+setup/*.log
+*.env
+.env
+.env.*
+
+# Live server configs hold the DB password in their connection strings.
+server/configs/
+worldserver.conf
+authserver.conf
+playerbots.conf
+
+# ─────────────────────────────────────────────────────────────
+#  Huge / generated / third-party — not ours to publish
+# ─────────────────────────────────────────────────────────────
+
+# ~7 GB of compiler output
+build/
+
+# binaries + ~3 GB of extracted client data
+server/
+
+# the LIVE database
+mysql/
+
+# clone of mod-playerbots (someone else's repo)
+source/
+
+# the WoW client
+client/
+
+# Playwright + downloaded browsers
+tools/
+
+# pre-extracted client data archive (1.1 GB)
+data.zip
+
+node_modules/
+package-lock.json
+
+# Compiled output - rebuild from panel/hud-launcher/*.cs
+*.exe
+*.pdb
+*.obj
+
+# Panel runtime noise
+panel/panel.log
+panel/panel.err
+panel/out/
+panel/profile/
+
+# Local agent config
+.claude/
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.vs/
+.idea/
+*.swp
