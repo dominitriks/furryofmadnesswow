@@ -71,5 +71,7 @@ desktop.ini
 *.swp
 
 # Supabase keys for the site (generated from config.example.js)
-cloud/web/config.js
 cloud/agent/.env
+
+cloud/agent/agent.log
+cloud/agent/agent.err

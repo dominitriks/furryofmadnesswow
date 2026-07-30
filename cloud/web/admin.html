@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Админ — Furry of Madness</title>
+<style>
+:root{
+  --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --border:rgba(255,255,255,.10); --rule:#2c2c2a;
+  --good:#0ca30c; --warn:#fab219; --crit:#d03b3b; --accent:#3987e5;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+     font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:22px 20px 60px}
+nav{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+nav a{color:var(--ink2);text-decoration:none;font-size:13px;font-weight:650;
+      padding:7px 13px;border:1px solid var(--border);border-radius:8px}
+nav a.on{background:var(--surface);color:var(--ink)}
+h1{font-size:21px;margin:0 0 4px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin:0 0 12px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:17px 19px}
+.card.wide{grid-column:1/-1}
+label{display:block;font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;
+      letter-spacing:.6px;margin:12px 0 5px}
+input,select,textarea{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);
+      background:var(--plane);color:var(--ink);font:inherit;font-size:14px}
+input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 55%,transparent);
+      border-color:var(--accent)}
+button{padding:9px 16px;border-radius:8px;border:1px solid transparent;background:var(--accent);
+       color:#04121f;font:inherit;font-weight:700;font-size:13.5px;cursor:pointer}
+button:hover{filter:brightness(1.1)} button:disabled{opacity:.45;cursor:not-allowed}
+button.ghost{background:transparent;border-color:var(--border);color:var(--ink)}
+button.danger{background:var(--crit);color:#fff}
+button.go{background:var(--good);color:#04120a}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.hint{color:var(--muted);font-size:12px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px;
+   font-weight:700;padding:8px 10px;border-bottom:1px solid var(--rule)}
+td{padding:8px 10px;border-bottom:1px solid var(--rule)}
+tr:last-child td{border-bottom:0}
+.scroll{overflow-x:auto}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+      font-size:11.5px;font-weight:700}
+.ok{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.bad{background:color-mix(in srgb,var(--crit) 18%,transparent);color:var(--crit)}
+.wait{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+#login{max-width:380px;margin:70px auto}
+#toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;
+       max-width:min(440px,92vw);z-index:60}
+.msg{padding:11px 14px;border-radius:9px;font-size:13.5px;border:1px solid var(--border);
+     background:var(--surface);white-space:pre-wrap;box-shadow:0 8px 26px rgba(0,0,0,.5)}
+.msg.m-ok{border-color:var(--good);color:var(--good)}
+.msg.m-bad{border-color:var(--crit);color:var(--crit)}
+code{background:var(--plane);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12px}
+.hide{display:none}
+</style>
+</head>
+<body>
+
+<div id="login" class="hide">
+  <div class="card">
+    <h1>Админ вход</h1>
+    <p class="hint" style="margin-top:2px">Само за администратори на сървъра.</p>
+    <form onsubmit="doLogin(event)">
+      <label for="email">Имейл</label>
+      <input id="email" type="email" autocomplete="username" required>
+      <label for="pass">Парола</label>
+      <input id="pass" type="password" autocomplete="current-password" required>
+      <div class="row"><button id="loginBtn" type="submit">Влез</button></div>
+    </form>
+    <div id="loginMsg" class="hint"></div>
+  </div>
+</div>
+
+<div id="app" class="wrap hide">
+  <nav>
+    <a href="/">Сайт</a>
+    <a href="/admin" class="on">Админ</a>
+    <span style="flex:1"></span>
+    <span class="hint" id="who" style="margin:0"></span>
+    <button class="ghost" onclick="doLogout()">Изход</button>
+  </nav>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2>Състояние</h2>
+      <div id="status">зареждане…</div>
+      <div class="hint" id="statusAge"></div>
+      <div class="row">
+        <button class="go"     onclick="cmd('server_start',{},'Пускам сървъра')">▶ Пусни</button>
+        <button class="danger" onclick="confirmCmd('server_stop','Да спра ли сървъра?')">■ Спри</button>
+        <button class="ghost"  onclick="confirmCmd('server_restart','Да рестартирам ли?')">⟳ Рестарт</button>
+      </div>
+      <div class="hint">Командите се изпълняват от агента на сървърната машина —
+        не от браузъра. Отнема до 15 секунди да бъдат подети.</div>
+    </div>
+
+    <div class="card">
+      <h2>Нов игрови акаунт</h2>
+      <label for="au">Потребител</label>
+      <input id="au" maxlength="16" autocomplete="off" placeholder="до 16 знака">
+      <label for="ap">Парола</label>
+      <input id="ap" maxlength="16" autocomplete="new-password" placeholder="до 16 знака">
+      <label for="ag">GM ниво</label>
+      <select id="ag">
+        <option value="0">0 — Играч</option><option value="1">1 — Модератор</option>
+        <option value="2">2 — Game Master</option><option value="3">3 — Администратор</option>
+      </select>
+      <div class="row"><button onclick="mkAccount()">Създай</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Управление на акаунт</h2>
+      <label for="tu">Потребител</label>
+      <input id="tu" maxlength="16" autocomplete="off" placeholder="съществуващо име">
+      <label for="tg">Смени GM ниво</label>
+      <div class="row" style="margin-top:0">
+        <select id="tg" style="flex:1">
+          <option value="0">0 — Играч</option><option value="1">1 — Модератор</option>
+          <option value="2">2 — Game Master</option><option value="3">3 — Администратор</option>
+        </select>
+        <button onclick="setGm()">Приложи</button>
+      </div>
+      <label for="tp">Нова парола</label>
+      <div class="row" style="margin-top:0">
+        <input id="tp" maxlength="16" type="password" style="flex:1" placeholder="до 16 знака">
+        <button onclick="setPass()">Смени</button>
+      </div>
+      <div class="row"><button class="danger" onclick="delAccount()">Изтрий акаунта</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Конзолна команда</h2>
+      <label for="cc">Команда (без точка отпред)</label>
+      <input id="cc" placeholder="напр. server info" autocomplete="off"
+             onkeydown="if(event.key==='Enter')rawCmd()">
+      <div class="row"><button onclick="rawCmd()">Изпълни</button></div>
+      <div class="hint">Изпълнява се на worldserver конзолата с пълни права.
+        Нови редове се отхвърлят, за да не се вмъкват няколко команди наведнъж.</div>
+    </div>
+
+    <div class="card wide">
+      <h2>Последни команди</h2>
+      <div class="scroll">
+        <table><thead><tr><th>Кога</th><th>Вид</th><th>Данни</th><th>Статус</th><th>Резултат</th></tr></thead>
+        <tbody id="cmds"><tr><td colspan="5" class="hint">зареждане…</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <h2>Регистрации от сайта</h2>
+      <div class="scroll">
+        <table><thead><tr><th>Кога</th><th>Потребител</th><th>Статус</th><th>Бележка</th></tr></thead>
+        <tbody id="regs"><tr><td colspan="4" class="hint">зареждане…</td></tr></tbody></table>
+      </div>
+      <div class="hint">Паролите не се показват тук — сървърът ги изтрива веднага
+        след създаване на акаунта и заявката не ги връща изобщо.</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dur=s=>{s=+s||0;const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+  return d?d+'д '+h+'ч':(h?h+'ч '+m+'м':m+'м');};
+const fmt=t=>t?new Date(t).toLocaleString('bg-BG'):'—';
+let TOKEN=null, USER=null, timer=null;
+
+function toast(ok,t){const e=document.createElement('div');e.className='msg '+(ok?'m-ok':'m-bad');
+  e.textContent=t;document.getElementById('toast').appendChild(e);setTimeout(()=>e.remove(),9000);}
+
+async function sb(path,opts={}){
+  const h={apikey:CONFIG.SUPABASE_ANON_KEY,'Content-Type':'application/json',...(opts.headers||{})};
+  h.Authorization='Bearer '+(TOKEN||CONFIG.SUPABASE_ANON_KEY);
+  const r=await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${path}`,{...opts,headers:h});
+  const t=await r.text();
+  if(!r.ok) throw new Error(t||('HTTP '+r.status));
+  return t?JSON.parse(t):null;
+}
+
+// ── auth ────────────────────────────────────────────────────────────────
+async function doLogin(ev){
+  ev.preventDefault();
+  const btn=document.getElementById('loginBtn'), msg=document.getElementById('loginMsg');
+  btn.disabled=true; msg.textContent='Влизам…';
+  try{
+    const r=await fetch(`${CONFIG.SUPABASE_URL}/auth/v1/token?grant_type=password`,{
+      method:'POST',headers:{apikey:CONFIG.SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email:document.getElementById('email').value.trim(),
+                           password:document.getElementById('pass').value})});
+    const j=await r.json();
+    if(!r.ok) throw new Error(j.error_description||j.msg||'грешни данни');
+    TOKEN=j.access_token; USER=j.user;
+    // Session lives in sessionStorage, not localStorage: it dies with the tab.
+    sessionStorage.setItem('fom_token',TOKEN);
+    sessionStorage.setItem('fom_user',JSON.stringify(USER));
+    await enterAdmin();
+  }catch(e){ msg.textContent='Неуспешен вход: '+e.message; }
+  finally{ btn.disabled=false; }
+}
+
+function doLogout(){
+  TOKEN=null;USER=null;sessionStorage.clear();
+  if(timer)clearInterval(timer);
+  document.getElementById('app').classList.add('hide');
+  document.getElementById('login').classList.remove('hide');
+}
+
+async function isAdmin(){
+  try{ return (await sb('rpc/is_admin',{method:'POST',body:'{}'}))===true; }
+  catch(e){ return false; }
+}
+
+async function enterAdmin(){
+  if(!(await isAdmin())){
+    document.getElementById('loginMsg').textContent=
+      'Този акаунт не е администратор.';
+    TOKEN=null;sessionStorage.clear();return;
+  }
+  document.getElementById('login').classList.add('hide');
+  document.getElementById('app').classList.remove('hide');
+  document.getElementById('who').textContent=USER?.email||'';
+  refresh(); timer=setInterval(refresh,10000);
+}
+
+// ── commands ────────────────────────────────────────────────────────────
+async function cmd(kind,payload,note){
+  if(note) toast(true,note+'…');
+  try{
+    await sb('admin_commands',{method:'POST',
+      headers:{Prefer:'return=minimal'},
+      body:JSON.stringify({kind,payload,created_by:USER.id,status:'pending'})});
+    toast(true,'Командата е в опашката. Агентът я поема до 15 сек.');
+    setTimeout(refresh,2000);
+  }catch(e){ toast(false,'Неуспешно: '+e.message); }
+}
+function confirmCmd(kind,q){ if(confirm(q)) cmd(kind,{},'Изпращам'); }
+
+const RE_U=/^[A-Za-z0-9_-]{1,16}$/, RE_P=/^[\x21-\x7E]{1,16}$/;
+function mkAccount(){
+  const u=document.getElementById('au').value.trim(), p=document.getElementById('ap').value,
+        g=+document.getElementById('ag').value;
+  if(!RE_U.test(u)) return toast(false,'Името: A-Z a-z 0-9 _ - до 16 знака.');
+  if(!RE_P.test(p)) return toast(false,'Паролата: до 16 печатаеми знака без интервал.');
+  cmd('account_create',{username:u,password:p,gmlevel:g});
+  document.getElementById('au').value='';document.getElementById('ap').value='';
+}
+function setGm(){
+  const u=document.getElementById('tu').value.trim(), g=+document.getElementById('tg').value;
+  if(!RE_U.test(u)) return toast(false,'Въведи валидно име.');
+  cmd('account_gmlevel',{username:u,gmlevel:g});
+}
+function setPass(){
+  const u=document.getElementById('tu').value.trim(), p=document.getElementById('tp').value;
+  if(!RE_U.test(u)) return toast(false,'Въведи валидно име.');
+  if(!RE_P.test(p)) return toast(false,'Паролата: до 16 печатаеми знака без интервал.');
+  cmd('account_password',{username:u,password:p});
+  document.getElementById('tp').value='';
+}
+function delAccount(){
+  const u=document.getElementById('tu').value.trim();
+  if(!RE_U.test(u)) return toast(false,'Въведи валидно име.');
+  if(prompt('Ще изтрие акаунта "'+u+'" и характерите му.\nНапиши името за потвърждение:')!==u)
+    return toast(false,'Отказано.');
+  cmd('account_delete',{username:u});
+}
+function rawCmd(){
+  const el=document.getElementById('cc'), v=el.value.trim();
+  if(!v) return toast(false,'Въведи команда.');
+  if(/[\r\n]/.test(v)) return toast(false,'Само една команда наведнъж.');
+  cmd('console',{command:v.replace(/^\./,'')}); el.value='';
+}
+
+// ── refresh ─────────────────────────────────────────────────────────────
+async function refresh(){
+  try{
+    const s=(await sb('server_status?id=eq.1&select=*'))?.[0];
+    if(s){
+      const age=(Date.now()-new Date(s.updated_at).getTime())/1000, fresh=age<150;
+      const up=s.online&&fresh;
+      document.getElementById('status').innerHTML=
+        `<span class="pill ${up?'ok':'bad'}">${up?'✓ работи':'✗ офлайн'}</span>`
+        +` <span class="hint" style="margin:0">${s.players_online} играчи · ${s.bots_online} бота`
+        +` · tick ${s.tick_max_ms??'—'} ms · ${s.uptime_sec?dur(s.uptime_sec):'—'}</span>`;
+      document.getElementById('statusAge').textContent =
+        fresh?'':'данните са отпреди '+dur(age)+' — агентът мълчи, показаното може да е остаряло';
+    }
+  }catch(e){}
+
+  try{
+    const c=await sb('admin_commands?select=created_at,kind,payload,status,result&order=created_at.desc&limit=12');
+    const tb=document.getElementById('cmds');
+    tb.innerHTML=(c&&c.length)?c.map(r=>{
+      const cls=r.status==='done'?'ok':(r.status==='error'?'bad':'wait');
+      const pay=r.payload?Object.entries(r.payload).map(([k,v])=>k==='password'?'':`${k}=${v}`)
+                 .filter(Boolean).join(' '):'';
+      return `<tr><td>${fmt(r.created_at)}</td><td><code>${esc(r.kind)}</code></td>`
+        +`<td class="hint">${esc(pay)}</td><td><span class="pill ${cls}">${esc(r.status)}</span></td>`
+        +`<td class="hint">${esc((r.result||'').slice(0,110))}</td></tr>`;
+    }).join(''):'<tr><td colspan="5" class="hint">няма команди</td></tr>';
+  }catch(e){}
+
+  try{
+    const g=await sb('rpc/admin_registrations',{method:'POST',body:'{}'});
+    const tb=document.getElementById('regs');
+    tb.innerHTML=(g&&g.length)?g.slice(0,12).map(r=>{
+      const cls=r.status==='done'?'ok':(r.status==='error'?'bad':'wait');
+      return `<tr><td>${fmt(r.created_at)}</td><td><b>${esc(r.username)}</b></td>`
+        +`<td><span class="pill ${cls}">${esc(r.status)}</span></td>`
+        +`<td class="hint">${esc(r.error||'')}</td></tr>`;
+    }).join(''):'<tr><td colspan="4" class="hint">няма регистрации</td></tr>';
+  }catch(e){}
+}
+
+// ── boot ────────────────────────────────────────────────────────────────
+(async function(){
+  const t=sessionStorage.getItem('fom_token');
+  if(t){ TOKEN=t; try{USER=JSON.parse(sessionStorage.getItem('fom_user'));}catch(e){}
+         if(await isAdmin()) return enterAdmin(); sessionStorage.clear(); TOKEN=null; }
+  document.getElementById('login').classList.remove('hide');
+})();
+</script>
+</body>
+</html>

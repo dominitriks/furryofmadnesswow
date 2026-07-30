@@ -192,6 +192,128 @@ async function processRegistrations() {
   return done;
 }
 
+// ── pull: admin command queue ────────────────────────────────────────────
+//
+// The site can only ENQUEUE work; everything actually runs here. Each kind is
+// translated into a known console command rather than passing strings through,
+// so a compromised admin session cannot invent new capabilities.
+async function runAdminCommand(c) {
+  const p = c.payload || {};
+  const needUser = () => {
+    if (!RE_USER.test(p.username || '')) throw new Error('invalid username');
+    return p.username;
+  };
+  const needPass = () => {
+    if (!RE_PASS.test(p.password || '')) throw new Error('invalid password');
+    return p.password;
+  };
+  const needLevel = () => {
+    const l = Number(p.gmlevel);
+    if (!Number.isInteger(l) || l < 0 || l > 3) throw new Error('gmlevel must be 0-3');
+    return l;
+  };
+
+  switch (c.kind) {
+    case 'server_start': {
+      const { execFile } = require('child_process');
+      execFile('powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(SERVER_DIR, '..', 'START-SERVER.ps1')],
+        { windowsHide: true }, () => {});
+      return 'START-SERVER.ps1 launched';
+    }
+    case 'server_stop':
+      await relaySend('server shutdown 15');
+      return 'shutdown requested (15s grace)';
+    case 'server_restart': {
+      await relaySend('server shutdown 15');
+      const { execFile } = require('child_process');
+      setTimeout(() => execFile('powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(SERVER_DIR, '..', 'START-SERVER.ps1')],
+        { windowsHide: true }, () => {}), 45000);
+      return 'restart requested';
+    }
+    case 'console': {
+      const cmd = String(p.command || '').trim().replace(/^\./, '');
+      if (!cmd) throw new Error('empty command');
+      // Newlines would smuggle extra console commands through the relay.
+      if (/[\r\n]/.test(cmd)) throw new Error('only one command at a time');
+      await relaySend(cmd);
+      return 'executed';
+    }
+    case 'account_create': {
+      const u = needUser(), pw = needPass(), lvl = Number(p.gmlevel) || 0;
+      if (await accountExists(u)) throw new Error('account already exists');
+      await relaySend(`account create ${u} ${pw}`);
+      let id = null;
+      for (let i = 0; i < 30 && !id; i++) { await sleep(400); id = await accountExists(u); }
+      if (!id) throw new Error('account did not appear in the database');
+      if (lvl > 0) {
+        await relaySend(`account set gmlevel ${u} ${lvl} -1`);
+        await sleep(1200);
+      }
+      return `created (id ${id}${lvl ? `, GM ${lvl}` : ''})`;
+    }
+    case 'account_gmlevel': {
+      const u = needUser(), lvl = needLevel();
+      if (!(await accountExists(u))) throw new Error('no such account');
+      await relaySend(`account set gmlevel ${u} ${lvl} -1`);
+      await sleep(1200);
+      const r = await q('acore_auth',
+        'SELECT IFNULL(aa.gmlevel,0) AS gm FROM account a LEFT JOIN account_access aa ON aa.id=a.id WHERE a.username=?',
+        [u.toUpperCase()]);
+      const now = r.length ? r[0].gm : null;
+      if (Number(now) !== lvl) throw new Error(`not applied (db says ${now})`);
+      return lvl === 0 ? 'rights revoked' : `GM ${lvl}`;
+    }
+    case 'account_password': {
+      const u = needUser(), pw = needPass();
+      const id = await accountExists(u);
+      if (!id) throw new Error('no such account');
+      const before = await q('acore_auth', 'SELECT SHA2(HEX(verifier),256) v FROM account WHERE id=?', [id]);
+      await relaySend(`account set password ${u} ${pw} ${pw}`);
+      await sleep(1500);
+      const after = await q('acore_auth', 'SELECT SHA2(HEX(verifier),256) v FROM account WHERE id=?', [id]);
+      // The SRP6 verifier must change, otherwise the command quietly did nothing.
+      if (before[0]?.v === after[0]?.v) throw new Error('password unchanged');
+      return 'password changed';
+    }
+    case 'account_delete': {
+      const u = needUser();
+      if (!(await accountExists(u))) throw new Error('no such account');
+      await relaySend(`account delete ${u}`);
+      await sleep(1500);
+      if (await accountExists(u)) throw new Error('account still exists');
+      return 'deleted';
+    }
+    default:
+      throw new Error('unknown command kind: ' + c.kind);
+  }
+}
+
+async function processAdminCommands() {
+  const pending = await sb('GET', 'admin_commands?status=eq.pending&select=id,kind,payload&order=created_at.asc&limit=5');
+  if (!pending || !pending.length) return 0;
+
+  let n = 0;
+  for (const c of pending) {
+    // Claim it first so a slow command is not picked up twice.
+    await sb('PATCH', `admin_commands?id=eq.${c.id}`, { status: 'done', result: 'running…' });
+    try {
+      const result = await runAdminCommand(c);
+      await sb('PATCH', `admin_commands?id=eq.${c.id}`,
+        { status: 'done', result, processed_at: new Date().toISOString() });
+      log('admin command', c.kind, '->', result);
+      n++;
+    } catch (e) {
+      const msg = String(e.message || e);
+      await sb('PATCH', `admin_commands?id=eq.${c.id}`,
+        { status: 'error', result: msg, processed_at: new Date().toISOString() });
+      log('admin command', c.kind, 'FAILED:', msg);
+    }
+  }
+  return n;
+}
+
 // ── loops ────────────────────────────────────────────────────────────────
 async function pushLoop() {
   for (;;) {
@@ -213,6 +335,11 @@ async function pollLoop() {
       if (n) log(`processed ${n} registration(s)`);
     } catch (e) {
       log('registration poll failed:', e.message);
+    }
+    try {
+      await processAdminCommands();
+    } catch (e) {
+      log('admin queue poll failed:', e.message);
     }
     await sleep(POLL_INTERVAL);
   }
