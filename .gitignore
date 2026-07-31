@@ -80,6 +80,7 @@ cloud/agent/agent.err
 # Database dumps from setup/backup-databases.ps1.
 # These carry every account's SRP6 salt and verifier - never publish them.
 db-backup-*/
+db-restore-*/
 *.sql.gz
 
 # Decrypted migration dumps. Only the .enc versions may be committed - this
