@@ -1,4 +1,4 @@
-# Finds how many playerbots THIS machine carries, by measuring instead of guessing.
+﻿# Finds how many playerbots THIS machine carries, by measuring instead of guessing.
 #
 # Method: raise the bot count in steps, and at each step let the world settle,
 # then sample the server tick for several minutes. The tick (diff) is the honest
@@ -71,6 +71,41 @@ function Get-Status {
     catch { return $null }
 }
 
+# Ask the world itself rather than sampling the panel. `server info` prints a
+# summary over the last 500 ticks, which is both authoritative and already
+# aggregated - sampling one instantaneous reading every few seconds would mostly
+# catch the idle moments between them.
+function Get-Tick {
+    $log = "$BASE\server\logs\worldserver-console.log"
+    $marker = "MEASURE-$([guid]::NewGuid().ToString('N').Substring(0,8))"
+    $before = if (Test-Path $log) { (Get-Item $log).Length } else { 0 }
+
+    'server info' | Set-Content "$BASE\server\cmd.txt" -Encoding ascii
+    Start-Sleep -Seconds 6
+    if (-not (Test-Path $log)) { return $null }
+
+    # Only the text written after the command, so an older summary further up the
+    # log cannot be mistaken for this one.
+    $fs = [System.IO.File]::Open($log, 'Open', 'Read', 'ReadWrite')
+    try {
+        if ($fs.Length -le $before) { return $null }
+        $fs.Position = $before
+        $buf = New-Object byte[] ($fs.Length - $before)
+        [void]$fs.Read($buf, 0, $buf.Length)
+        $txt = [System.Text.Encoding]::UTF8.GetString($buf)
+    } finally { $fs.Dispose() }
+
+    $m = [regex]::Match($txt, 'Mean:\s*(\d+)ms')
+    $p = [regex]::Match($txt, 'Percentiles \(95, 99, max\):\s*(\d+)ms,\s*(\d+)ms,\s*(\d+)ms')
+    if (-not $p.Success) { return $null }
+    return [pscustomobject]@{
+        Mean = if ($m.Success) { [int]$m.Groups[1].Value } else { 0 }
+        P95  = [int]$p.Groups[1].Value
+        P99  = [int]$p.Groups[2].Value
+        Max  = [int]$p.Groups[3].Value
+    }
+}
+
 Set-Content -Path $out -Value "=== bot capacity sweep $(Get-Date -Format 'yyyy-MM-dd HH:mm') ===" -Encoding utf8
 Set-Content -Path $csv -Value "bots_target,bots_online,players,diff_avg_ms,diff_p95_ms,diff_max_ms,ram_mb,cpu_pct,verdict" -Encoding utf8
 
@@ -105,30 +140,36 @@ foreach ($target in $Steps) {
     }
 
     W "sampling for ${SampleMinutes}m"
-    $diffs = @(); $rams = @(); $cpus = @(); $online = 0; $players = 0
+    $means = @(); $p95s = @(); $maxes = @(); $rams = @(); $cpus = @(); $online = 0; $players = 0
     $sampleEnd = (Get-Date).AddMinutes($SampleMinutes)
     while ((Get-Date) -lt $sampleEnd) {
-        Start-Sleep -Seconds 15
+        $t = Get-Tick
+        if ($t) {
+            $means += $t.Mean; $p95s += $t.P95; $maxes += $t.Max
+            W ("  tick: mean={0}ms p95={1}ms p99={2}ms max={3}ms" -f $t.Mean, $t.P95, $t.P99, $t.Max)
+        }
         $s = Get-Status
-        if (-not $s) { continue }
-        if ($s.perf.diff -ne $null) { $diffs += [double]$s.perf.diff }
-        if ($s.proc.worldserver.ramMB) { $rams += [double]$s.proc.worldserver.ramMB }
-        $online = [int]$s.botsOnline; $players = [int]$s.playersOnline
+        if ($s) {
+            if ($s.proc.worldserver.ramMB) { $rams += [double]$s.proc.worldserver.ramMB }
+            $online = [int]$s.botsOnline; $players = [int]$s.playersOnline
+        }
         $c = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -ErrorAction SilentlyContinue |
              Where-Object { $_.Name -eq '_Total' }
         if ($c) { $cpus += [double]$c.PercentProcessorTime }
+        Start-Sleep -Seconds 40
     }
 
-    if ($diffs.Count -eq 0) {
-        W "no samples collected at $target - panel unreachable?"
-        Add-Content $csv "$target,$online,$players,,,,,,no samples"
+    if ($p95s.Count -eq 0) {
+        W "no readings at $target - could not parse 'server info'"
+        Add-Content $csv "$target,$online,$players,,,,,,no readings"
         continue
     }
 
-    $sorted = $diffs | Sort-Object
-    $avg = [math]::Round(($diffs | Measure-Object -Average).Average, 1)
-    $p95 = [math]::Round($sorted[[math]::Min([int][math]::Floor($sorted.Count * 0.95), $sorted.Count - 1)], 1)
-    $max = [math]::Round(($diffs | Measure-Object -Maximum).Maximum, 1)
+    $avg = [math]::Round(($means | Measure-Object -Average).Average, 1)
+    # The worst 95th percentile seen across the window, not the average of them:
+    # capacity is set by the bad moments, not the calm ones.
+    $p95 = ($p95s | Measure-Object -Maximum).Maximum
+    $max = ($maxes | Measure-Object -Maximum).Maximum
     $ram = if ($rams.Count) { [math]::Round(($rams | Measure-Object -Average).Average, 0) } else { 0 }
     $cpu = if ($cpus.Count) { [math]::Round(($cpus | Measure-Object -Average).Average, 0) } else { 0 }
 

@@ -284,7 +284,11 @@ function lastDiff() {
     fs.readSync(fd, buf, 0, buf.length, start);
     fs.closeSync(fd);
     const txt = buf.toString('utf8');
-    const diffs = [...txt.matchAll(/Update time diff:\s*(\d+)ms with (\d+) players online/g)];
+    // Two shapes: the core drops the "with N players online" tail when nobody
+    // real is connected, and only then. Matching the old shape alone meant the
+    // panel showed a blank tick for the entire time the realm was bot-only,
+    // which is exactly when someone is most likely to be watching it.
+    const diffs = [...txt.matchAll(/Update time diff:\s*(\d+)ms(?: with (\d+) players online)?/g)];
     const pct = [...txt.matchAll(/Percentiles \(95, 99, max\):\s*(\d+)ms,\s*(\d+)ms,\s*(\d+)ms/g)];
     const last = diffs.length ? diffs[diffs.length - 1] : null;
     const lastPct = pct.length ? pct[pct.length - 1] : null;
