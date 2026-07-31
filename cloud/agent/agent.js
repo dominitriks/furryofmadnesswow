@@ -52,6 +52,16 @@ const CMD_FILE = path.join(SERVER_DIR, 'cmd.txt');
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// A queued command carries the plaintext password only until the account exists.
+// Leaving it in the cloud would let any admin session harvest every password ever
+// set through the panel - the registration queue already clears its own for the
+// same reason.
+function stripPassword(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const { password, ...rest } = payload;
+  return rest;
+}
+
 // ── supabase REST (no SDK: one dependency less to keep current) ───────────
 async function sb(method, pathAndQuery, body, extraHeaders) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
@@ -292,24 +302,48 @@ async function runAdminCommand(c) {
   }
 }
 
+// A command is only worth running if the person who queued it is STILL an admin
+// and it has not been sitting around. Revoking an admin removes their REST access
+// instantly, but anything already queued would otherwise still run minutes later.
+const CMD_MAX_AGE_MS = 10 * 60 * 1000;
+
 async function processAdminCommands() {
-  const pending = await sb('GET', 'admin_commands?status=eq.pending&select=id,kind,payload&order=created_at.asc&limit=5');
+  const pending = await sb('GET',
+    'admin_commands?status=eq.pending&select=id,kind,payload,created_by,created_at&order=created_at.asc&limit=5');
   if (!pending || !pending.length) return 0;
 
   let n = 0;
   for (const c of pending) {
-    // Claim it first so a slow command is not picked up twice.
-    await sb('PATCH', `admin_commands?id=eq.${c.id}`, { status: 'done', result: 'running…' });
+    // The payload may carry a plaintext password. Clear it on every exit path
+    // below - the cloud must not keep one after the account exists.
+    const finish = (fields) => sb('PATCH', `admin_commands?id=eq.${c.id}`,
+      { ...fields, payload: stripPassword(c.payload), processed_at: new Date().toISOString() });
+
+    const issuer = c.created_by
+      ? await sb('GET', `admins?user_id=eq.${c.created_by}&select=user_id`)
+      : null;
+    if (!issuer || !issuer.length) {
+      await finish({ status: 'error', result: 'issuer is no longer an admin' });
+      log('admin command', c.kind, 'REJECTED: issuer no longer an admin');
+      continue;
+    }
+    if (Date.now() - new Date(c.created_at).getTime() > CMD_MAX_AGE_MS) {
+      await finish({ status: 'error', result: 'command expired before it could run' });
+      log('admin command', c.kind, 'REJECTED: stale');
+      continue;
+    }
+
+    // Claim with 'running', not 'done': a crash mid-command must not leave a row
+    // claiming success. 'running' rows are visible as stuck instead of silently wrong.
+    await sb('PATCH', `admin_commands?id=eq.${c.id}`, { status: 'running', result: 'изпълнява се…' });
     try {
       const result = await runAdminCommand(c);
-      await sb('PATCH', `admin_commands?id=eq.${c.id}`,
-        { status: 'done', result, processed_at: new Date().toISOString() });
+      await finish({ status: 'done', result });
       log('admin command', c.kind, '->', result);
       n++;
     } catch (e) {
       const msg = String(e.message || e);
-      await sb('PATCH', `admin_commands?id=eq.${c.id}`,
-        { status: 'error', result: msg, processed_at: new Date().toISOString() });
+      await finish({ status: 'error', result: msg });
       log('admin command', c.kind, 'FAILED:', msg);
     }
   }

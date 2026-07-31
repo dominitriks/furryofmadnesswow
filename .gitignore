@@ -8,6 +8,7 @@
 setup/CREDENTIALS.txt
 setup/db-password.txt
 setup/gm-password.txt
+setup/*-password.txt
 setup/public-ip.txt
 setup/hosts.backup
 setup/*.log
