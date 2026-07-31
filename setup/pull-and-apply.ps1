@@ -154,6 +154,16 @@ if ($restartNeeded) {
 }
 
 Head "Готово"
+if ($needModules) {
+    Warn "ВНИМАНИЕ: списъкът с модули се промени. Редът е важен:"
+    Warn "  1. cd build ; cmake . ; cmake --build . --config RelWithDebInfo --parallel 1"
+    Warn "  2. cmake --build . --config RelWithDebInfo --target install   (сървърът СПРЯН)"
+    Warn "  3. .\setup\apply-settings.ps1        <- ПУСНИ ГО ПАК СЛЕД ПОСТРОЯВАНЕТО"
+    Warn ""
+    Warn "Точка 3 не е излишна: настройките на нов модул току-що бяха ПРОПУСНАТИ,"
+    Warn "защото .conf.dist се появява едва при install. Без второто пускане модулът"
+    Warn "тръгва с вградените си стойности и изглежда настроен, без да е."
+}
 if ($needBuild) {
     Warn "ВНИМАНИЕ: има нов пач по C++ кода, а той НЕ е приложен."
     Warn "Докато не се построи наново, сървърът върви със стария код:"
