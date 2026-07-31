@@ -55,6 +55,20 @@ if (Get-NetTCPConnection -State Listen -LocalPort 8080 -ErrorAction SilentlyCont
 }
 Write-Host "panel: http://localhost:8080" -ForegroundColor Green
 
+# 4b. Player API - what the website calls for registration, profiles and unstuck.
+#     Binds to 127.0.0.1; Cloudflare's tunnel publishes it as wow-api.level8.bg.
+if (Get-NetTCPConnection -State Listen -LocalPort 8091 -ErrorAction SilentlyContinue) {
+    Write-Host "player API already running" -ForegroundColor Green
+} elseif (Test-Path "$base\cloud\home-api\.env") {
+    Write-Host "Starting player API..." -ForegroundColor Yellow
+    Start-Process node.exe -ArgumentList 'server.js' -WorkingDirectory "$base\cloud\home-api" `
+        -WindowStyle Hidden -RedirectStandardOutput "$base\cloud\home-api\api.log" -RedirectStandardError "$base\cloud\home-api\api.err"
+    Start-Sleep -Seconds 3
+    Write-Host "player API: http://127.0.0.1:8091 (public via wow-api.level8.bg)" -ForegroundColor Green
+} else {
+    Write-Host "player API skipped - cloud\home-api\.env is missing" -ForegroundColor Yellow
+}
+
 # 5. Report
 Write-Host "`n=== status ===" -ForegroundColor Cyan
 foreach ($p in @('worldserver','authserver')) {

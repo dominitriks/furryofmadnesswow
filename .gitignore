@@ -87,3 +87,10 @@ db-restore-*/
 # repo is PUBLIC and acore_auth holds password-equivalent SRP6 verifiers.
 setup/migration/*.sql
 setup/migration/*.sql.gz
+
+# Player API secrets (site key + token signing secret)
+cloud/home-api/.env
+cloud/home-api/api.log
+cloud/home-api/api.err
+setup/dns.log
+setup/dns-last-ip.txt
