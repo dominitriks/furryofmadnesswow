@@ -116,17 +116,22 @@ function Apply-Section([string]$label, [string]$file, $kv) {
     Write-Output ("  {0}: {1} changed, {2} appended, {3} already correct" -f $label, $set, $added, $same)
 }
 
-$map = @{
-    'worldserver.conf'        = "$cfg\worldserver.conf"
-    'authserver.conf'         = "$cfg\authserver.conf"
-    'modules/playerbots.conf' = "$cfg\modules\playerbots.conf"
+# A [modules/<name>.conf] section resolves on its own, so adding a module needs
+# no edit here. With a hardcoded list, a new module's settings silently never
+# applied: the section sat in server-settings.conf, was skipped as "unknown",
+# and the module ran on its built-in defaults while looking configured.
+function Resolve-ConfPath([string]$label) {
+    if ($label -match '^modules/(.+\.conf)$') { return (Join-Path $cfg (Join-Path 'modules' $Matches[1])) }
+    if ($label -match '^[A-Za-z0-9_.-]+\.conf$') { return (Join-Path $cfg $label) }
+    return $null
 }
 
 foreach ($label in $sections.Keys) {
-    if (-not $map.ContainsKey($label)) { Write-Warning "unknown section [$label] - skipped"; continue }
+    $path = Resolve-ConfPath $label
+    if (-not $path) { Write-Warning "unknown section [$label] - skipped"; continue }
     Write-Output ""
     Write-Output "[$label]"
-    Apply-Section $label $map[$label] $sections[$label]
+    Apply-Section $label $path $sections[$label]
 }
 
 # ---------------------------------------------------------------- verify
@@ -135,8 +140,8 @@ if (-not $WhatIfPreference) {
     Write-Output "--- verification ---"
     $bad = 0
     foreach ($label in $sections.Keys) {
-        if (-not $map.ContainsKey($label)) { continue }
-        $file = $map[$label]
+        $file = Resolve-ConfPath $label
+        if (-not $file) { continue }
         if (-not (Test-Path $file)) { continue }
 
         $bytes = [System.IO.File]::ReadAllBytes($file)

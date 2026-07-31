@@ -92,10 +92,17 @@ function Portable([string]$v) {
 }
 
 $files = @(
-    @{ label = 'worldserver.conf';         live = "$cfg\worldserver.conf" },
-    @{ label = 'authserver.conf';          live = "$cfg\authserver.conf" },
-    @{ label = 'modules/playerbots.conf';  live = "$cfg\modules\playerbots.conf" }
+    @{ label = 'worldserver.conf'; live = "$cfg\worldserver.conf" },
+    @{ label = 'authserver.conf';  live = "$cfg\authserver.conf" }
 )
+
+# Module configs are DISCOVERED, not listed. Adding a module used to mean
+# remembering to edit this script too, and forgetting meant its settings simply
+# never reached git - the module then ran on stock defaults on the other machine
+# while looking correctly configured here.
+foreach ($mc in (Get-ChildItem (Join-Path $cfg 'modules') -Filter '*.conf' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
+    $files += @{ label = "modules/$($mc.Name)"; live = $mc.FullName }
+}
 
 $sb = New-Object System.Text.StringBuilder
 function Emit($t) { [void]$sb.AppendLine($t) }
@@ -114,6 +121,20 @@ Emit "# NO SECRETS IN THIS FILE. It is committed to a public repo."
 
 $total = 0
 $skipped = @()
+$emitted = @()
+
+# Sections whose .conf does not exist on THIS machine are carried over verbatim.
+# Without this, running export on the non-hosting machine - which has no reason
+# to have every module installed - would silently delete that module's settings
+# from git, and the host would quietly revert it to stock on the next apply.
+$carried = [ordered]@{}
+if (Test-Path $out) {
+    $cur = $null
+    foreach ($line in [System.IO.File]::ReadAllLines($out)) {
+        if ($line.Trim() -match '^\[(.+)\]$') { $cur = $Matches[1]; $carried[$cur] = @(); continue }
+        if ($cur) { $carried[$cur] += $line }
+    }
+}
 
 foreach ($f in $files) {
     $dist = "$($f.live).dist"
@@ -141,6 +162,7 @@ foreach ($f in $files) {
     if ($rows.Count -eq 0) { continue }
     Emit ""
     Emit "[$($f.label)]"
+    $emitted += $f.label
     foreach ($r in $rows) {
         # NB: PowerShell variable names are case-insensitive, so this local must
         # NOT be called $why - that would overwrite the $WHY table itself.
@@ -156,10 +178,23 @@ foreach ($f in $files) {
     }
 }
 
+$preserved = @()
+foreach ($label in $carried.Keys) {
+    if ($emitted -contains $label) { continue }
+    $preserved += $label
+    Emit ""
+    Emit "[$label]"
+    foreach ($l in $carried[$label]) { Emit $l }
+}
+
 [System.IO.File]::WriteAllText($out, $sb.ToString(), (New-Object System.Text.UTF8Encoding($false)))
 
 Write-Output "wrote $out"
 Write-Output "  $total settings captured"
+if ($preserved.Count -gt 0) {
+    Write-Output "  $($preserved.Count) section(s) carried over unchanged (no .conf on this machine):"
+    $preserved | ForEach-Object { Write-Output "    - $_" }
+}
 if ($skipped.Count -gt 0) {
     Write-Output "  $($skipped.Count) skipped:"
     $skipped | ForEach-Object { Write-Output "    - $_" }

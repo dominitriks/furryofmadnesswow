@@ -55,12 +55,16 @@ $hit = { param($pattern) @($changed | Where-Object { $_ -match $pattern }).Count
 $needSettings = & $hit 'setup/server-settings\.conf'
 $needSql      = & $hit '^setup/sql/'
 $needBuild    = & $hit '^setup/patches/'
+# source\ is gitignored, so a new module arrives as a line in this manifest, not
+# as files. Miss it and the module is simply absent - the server boots happily
+# and just does not have the feature.
+$needModules  = & $hit 'setup/modules\.txt'
 $needPanel    = & $hit '^panel/'
 $needApi      = & $hit '^cloud/home-api/'
 $needAgent    = & $hit '^cloud/agent/'
 $needSite     = & $hit '^cloud/web/'
 
-if (-not ($needSettings -or $needSql -or $needBuild -or $needPanel -or $needApi -or $needAgent -or $needSite)) {
+if (-not ($needSettings -or $needSql -or $needBuild -or $needModules -or $needPanel -or $needApi -or $needAgent -or $needSite)) {
     Head "Нищо за прилагане"
     Good "промените не засягат нищо, което се пуска на тази машина"
     exit 0
@@ -68,6 +72,7 @@ if (-not ($needSettings -or $needSql -or $needBuild -or $needPanel -or $needApi 
 
 Head "2. Какво трябва да се направи"
 if ($needBuild)    { Warn "пач по C++ кода  -> ИСКА ПОСТРОЯВАНЕ НАНОВО (не се прави оттук)" }
+if ($needModules)  { Warn "списъкът с модули се промени -> apply-modules.ps1 + ПОСТРОЯВАНЕ" }
 if ($needSql)      { Say  "  промени по базата -> apply-sql.ps1 (сървърът трябва да е спрян)" }
 if ($needSettings) { Say  "  настройки        -> apply-settings.ps1 + рестарт" }
 if ($needPanel)    { Say  "  панел            -> npm install + рестарт на панела" }
@@ -76,6 +81,19 @@ if ($needAgent)    { Say  "  облачен агент    -> npm install + ре�
 if ($needSite)     { Say  "  сайт             -> деплой (от папката на сайта, не оттук)" }
 
 if ($DryRun) { Head "-DryRun: нищо не е променено"; exit 0 }
+
+# Before anything else: cloning a module touches no running process, and knowing
+# a rebuild is due changes what the rest of this run is worth doing.
+if ($needModules) {
+    Head "Синхронизирам модулите със setup\modules.txt"
+    & "$PSScriptRoot\apply-modules.ps1"
+    $modCode = $LASTEXITCODE
+    if ($modCode -eq 10) {
+        $needBuild = $true
+        Warn "модулите се промениха -> ИСКА ПОСТРОЯВАНЕ НАНОВО, иначе новото не съществува"
+    }
+    elseif ($modCode -ne 0) { Warn "apply-modules се провали"; exit 1 }
+}
 
 $mustStop = $needSql -or $needSettings
 if ($mustStop -and (Get-Process worldserver -ErrorAction SilentlyContinue)) {

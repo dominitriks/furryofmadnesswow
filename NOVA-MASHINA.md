@@ -130,9 +130,14 @@ cd C:\wow
 git clone https://github.com/mod-playerbots/azerothcore-wotlk.git --branch=Playerbot source
 git -C source checkout ceeb3116ebedf4b35f12b75e5481b6ddd0de7a89
 
-git clone https://github.com/mod-playerbots/mod-playerbots.git source\modules\mod-playerbots
-git -C source\modules\mod-playerbots checkout 3fa1c1e49f8f1324b72461e576bce7c89b0a6521
+# модулите идват от setup\modules.txt, не се клонират на ръка
+.\setup\apply-modules.ps1
 ```
+
+> `source\` е в `.gitignore` — чужд код и гигабайти. Затова модулите пътуват
+> като **списък** (`setup\modules.txt`), а не като файлове. Добавен модул на
+> едната машина се появява на другата само след `apply-modules.ps1`
+> **и ново построяване** — самото дърпане от git не го включва.
 
 Приложи локалния пач — без него ботовете отказват RDF, докато са в бой, и
 влизат в подземието без изчакване:

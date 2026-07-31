@@ -1,0 +1,26 @@
+# Модули на сървъра — точните версии, които този сървър използва.
+#
+# source\ е в .gitignore (чужд код, гигабайти), затова модулите не пътуват през
+# git като файлове. Пътува този списък, а setup\apply-modules.ps1 го възпроизвежда.
+#
+# Формат:  папка | git адрес | commit
+# Празни редове и редове с # се пропускат.
+#
+# ⚠️ Добавяне или махане на модул ИЗИСКВА ново построяване. Промяната на списъка
+#    не влиза в сила сама.
+
+mod-playerbots | https://github.com/mod-playerbots/mod-playerbots.git | 3fa1c1e49f8f1324b72461e576bce7c89b0a6521
+mod-ah-bot     | https://github.com/azerothcore/mod-ah-bot.git        | a680cc1c98290713e9b3d3289544af78e5186dc1
+
+# mod-playerbots
+#   Ботовете. Свързан е с ядрото — ядрото е форкът Playerbot на AzerothCore,
+#   commit ceeb3116ebedf4b35f12b75e5481b6ddd0de7a89 (виж setup\migration\source-version.txt).
+#   Върху него се прилага и setup\patches\001-lfg-accept-in-combat.patch.
+#
+# mod-ah-bot
+#   Пълни аукциона с предмети и наддавания, за да има жива икономика.
+#   Добавен 2026-07-31. Не пипа глобални флагове на компилатора, но променя
+#   AC_MODULES_LIST, което прекомпилира и playerbots — тоест построяването е
+#   дълго, не инкрементално.
+#   Настройките му са в server-settings.conf, раздел [modules/mod_ahbot.conf].
+#   Собственикът на обявите се създава от setup\sql\ — акаунт AHBOT, герой Aukcioner.
